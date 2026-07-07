@@ -24,7 +24,7 @@ No internet. No servers. No accounts. Every model runs locally on your CPU.
 | **Linux** | ✅ Supported | `./run_linux.sh` |
 | **Windows 10/11** | ✅ Supported | double-click `run_windows.bat` |
 | **macOS** | ✅ Supported | double-click `run_macos.command` |
-| iOS / Android | ❌ Not possible | This is a Python desktop app (Tkinter + PyTorch); mobile OSes cannot run it. A mobile version would be a separate project. |
+
 
 ## Quick start
 
