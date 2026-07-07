@@ -85,6 +85,31 @@ image ──► Stage 0  EXIF metadata     (free — screenshots settled determi
 
 ## Configuration
 
+### Choosing the AI power (model profile)
+
+You can trade speed for accuracy by switching the vision model. Open `config.py` and change `ACTIVE_PROFILE`:
+
+```python
+MODEL_PROFILES = {
+    "fast": {"name": "ViT-B-32", "pretrained": "laion2b_s34b_b79k"},
+    "accurate": {"name": "ViT-B-16-SigLIP", "pretrained": "webli"},
+}
+ACTIVE_PROFILE = "fast"      # ← change to "accurate" for a stronger model
+```
+
+| Profile | Model | Speed | Accuracy | Download |
+|---|---|---|---|---|
+| `"fast"` (default) | CLIP ViT-B-32 | ⚡ fast on CPU | good | ~600 MB, once |
+| `"accurate"` | SigLIP ViT-B-16 | ~3–4× slower | best | ~800 MB, once |
+
+Notes when switching to `"accurate"`:
+
+- The new model weights download automatically on the first scan (internet needed once, then cached and fully offline).
+- SigLIP's confidence scores are calibrated differently from CLIP's, so the winning category stays reliable but the *confidence values* shift. If too many images land in *unclassified*, lower `CONFIDENCE_THRESHOLD` (try `0.4`–`0.5`) and re-scan.
+- Everything else (EXIF, blur/dark detection, duplicate hashing, OCR) is model-independent and unaffected.
+
+### Other tunables
+
 Edit `config.py`:
 
 - `CATEGORY_PROMPTS` — add/remove categories or tune their prompt sentences
