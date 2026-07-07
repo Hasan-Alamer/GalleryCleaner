@@ -1,0 +1,17 @@
+# Gallery Cleaner — no gradio, no web servers (100% local app).
+# Prefer running ./setup.sh instead of installing this file directly.
+pillow
+pillow-heif
+imagehash
+numpy
+opencv-python-headless
+# torch/torchvision: install BOTH from the CPU index for version compatibility
+# and a much smaller download:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+open_clip_torch
+# OCR: dual English + Arabic recognition over ONNX runtime
+rapidocr
+onnxruntime
+python-bidi  # required by rapidocr for Arabic (RTL) text reordering
