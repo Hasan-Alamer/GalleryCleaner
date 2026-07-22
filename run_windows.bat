@@ -40,7 +40,7 @@ echo ==^> Creating virtualenv .\venv ...
 if not exist venv python -m venv venv
 
 echo ==^> Installing base dependencies...
-venv\Scripts\pip install --upgrade pip --quiet
+venv\Scripts\python.exe -m pip install --upgrade pip --quiet
 venv\Scripts\pip install --quiet pillow pillow-heif imagehash numpy opencv-python-headless
 if errorlevel 1 goto fail
 
