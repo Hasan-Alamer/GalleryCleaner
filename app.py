@@ -111,6 +111,7 @@ class GalleryCleanerApp:
         self.active_category = None
         self._cats = []
         self._cells = {}             # path -> thumbnail cell frame
+        self._badges = {}            # path -> "selected" badge label (or None)
 
         self._build_ui()
         self._bind_keys()
@@ -139,6 +140,20 @@ class GalleryCleanerApp:
                    command=self.choose_folder).pack(side="right")
         self.scan_btn.set_enabled(False)
         self.stop_btn.set_enabled(False)
+
+        # ---- device selector (CPU / GPU) --------------------------------
+        device_box = tk.Frame(header, bg=C["surface"])
+        device_box.pack(side="right", padx=(0, 16))
+        tk.Label(device_box, text="Device:", font=FONT_BODY,
+                 bg=C["surface"], fg=C["fg_muted"]).pack(side="left", padx=(0, 4))
+        gpu_ok = classifier.gpu_available()
+        self._device_options = ["Auto", "CPU", "GPU" if gpu_ok else "GPU (unavailable)"]
+        self.device_var = tk.StringVar(value="Auto")
+        self.device_menu = ttk.Combobox(
+            device_box, textvariable=self.device_var, state="readonly",
+            values=self._device_options, width=15, font=FONT_SMALL)
+        self.device_menu.pack(side="left")
+        self.device_menu.bind("<<ComboboxSelected>>", self._on_device_change)
 
         # ---- progress + live status ------------------------------------
         prog = tk.Frame(self.root, bg=C["bg"], padx=14, pady=6)
@@ -258,6 +273,25 @@ class GalleryCleanerApp:
             self.canvas.yview_scroll(2, "units")
 
     # ------------------------------------------------------------ actions
+    def _on_device_change(self, _event=None):
+        if self.scanning:
+            messagebox.showwarning("Device", "Stop the current scan first.")
+            self.device_var.set(
+                {"cpu": "CPU", "cuda": "GPU"}.get(classifier.get_device(), "Auto"))
+            return
+        choice = self.device_var.get()
+        if choice == "GPU (unavailable)":
+            messagebox.showinfo(
+                "Device",
+                "No CUDA GPU was detected by the installed PyTorch build.\n"
+                "Reinstall with the GPU option in run_windows.bat to enable this.")
+            self.device_var.set("Auto")
+            return
+        device = {"Auto": "auto", "CPU": "cpu", "GPU": "cuda"}.get(choice, "auto")
+        classifier.set_device(device)
+        self.status_label.config(
+            text=f"Device set to {choice} — will apply on the next scan.")
+
     def choose_folder(self):
         folder = filedialog.askdirectory()
         if folder:
@@ -378,6 +412,7 @@ class GalleryCleanerApp:
         for w in self.inner.winfo_children():
             w.destroy()
         self._cells.clear()
+        self._badges.clear()
         items = self._current_items()
         max_page = max((len(items) - 1) // PAGE_SIZE, 0)
         self.page_label.config(
@@ -406,9 +441,12 @@ class GalleryCleanerApp:
             lbl.image = photo
             lbl.pack()
             # selection checkmark badge
+            badge = None
             if selected:
-                tk.Label(body, text="✓ selected", font=FONT_SMALL,
-                         bg=C["accent"], fg="#FFFFFF").place(x=4, y=4)
+                badge = tk.Label(body, text="✓ selected", font=FONT_SMALL,
+                                 bg=C["accent"], fg="#FFFFFF")
+                badge.place(x=4, y=4)
+            self._badges[r.path] = badge
             # red→green confidence bar
             conf_canvas = tk.Canvas(body, width=THUMB_SIZE, height=5,
                                     bg=C["border"], highlightthickness=0)
@@ -440,11 +478,26 @@ class GalleryCleanerApp:
         return self.thumb_cache[path]
 
     def _toggle_select(self, result):
-        if result.path in self.selected:
-            self.selected.discard(result.path)
+        path = result.path
+        selected = path not in self.selected
+        if selected:
+            self.selected.add(path)
         else:
-            self.selected.add(result.path)
-        self._render_grid()
+            self.selected.discard(path)
+
+        cell = self._cells.get(path)
+        if cell is not None:
+            cell.config(bg=C["accent"] if selected else C["border"])
+            badge = self._badges.get(path)
+            if selected and badge is None:
+                body = cell.winfo_children()[0]
+                badge = tk.Label(body, text="✓ selected", font=FONT_SMALL,
+                                 bg=C["accent"], fg="#FFFFFF")
+                badge.place(x=4, y=4)
+                self._badges[path] = badge
+            elif not selected and badge is not None:
+                badge.destroy()
+                self._badges[path] = None
         self._update_action_bar()
 
     def _update_action_bar(self):

@@ -111,6 +111,7 @@ class ClipEngine:
         self._lock = threading.Lock()
         self._loaded = False
         self.available = False
+        self.device = "cpu"
         self.model = None
         self.preprocess = None
         self.tokenizer = None
@@ -127,6 +128,14 @@ class ClipEngine:
                 import open_clip
             except ImportError:
                 return
+            device = config.DEVICE
+            if device == "auto":
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+            elif device == "cuda" and not torch.cuda.is_available():
+                device = "cpu"
+            self.device = device
+            print(f"[GalleryCleaner] CLIP loading on device: {device}"
+                  f"{' (' + torch.cuda.get_device_name(0) + ')' if device == 'cuda' else ''}")
             profile = config.MODEL_PROFILES[config.ACTIVE_PROFILE]
             try:
                 model, _, preprocess = open_clip.create_model_and_transforms(
@@ -135,13 +144,14 @@ class ClipEngine:
             except Exception:
                 return
             model.eval()
+            model.to(device)
             self.model, self.preprocess, self.tokenizer = model, preprocess, tokenizer
             self._torch = torch
             # text fingerprint per category = mean of all its prompt embeddings
             feats = []
             with torch.no_grad():
                 for cat, prompts in config.CATEGORY_PROMPTS.items():
-                    tokens = tokenizer(prompts)
+                    tokens = tokenizer(prompts).to(device)
                     tf = model.encode_text(tokens)
                     tf = tf / tf.norm(dim=-1, keepdim=True)
                     feats.append(tf.mean(dim=0))
@@ -157,7 +167,7 @@ class ClipEngine:
             return None
         torch = self._torch
         with torch.no_grad():
-            tensor = self.preprocess(img.convert("RGB")).unsqueeze(0)
+            tensor = self.preprocess(img.convert("RGB")).unsqueeze(0).to(self.device)
             feat = self.model.encode_image(tensor)
             feat = feat / feat.norm(dim=-1, keepdim=True)
             probs = (100.0 * feat @ self.text_features.T).softmax(dim=-1)[0]
@@ -175,6 +185,29 @@ _engine = ClipEngine()
 def clip_available() -> bool:
     _engine._load()
     return _engine.available
+
+
+def gpu_available() -> bool:
+    """Whether the installed torch build can see a CUDA GPU."""
+    try:
+        import torch
+        return torch.cuda.is_available()
+    except ImportError:
+        return False
+
+
+def get_device() -> str:
+    """Currently active device ('cpu' or 'cuda') if the model is loaded,
+    otherwise the configured preference."""
+    return _engine.device if _engine._loaded and _engine.available else config.DEVICE
+
+
+def set_device(device: str):
+    """Switch the CLIP device ('auto', 'cpu' or 'cuda'). Takes effect on the
+    next classification call — the model is unloaded and reloaded lazily."""
+    global _engine
+    config.DEVICE = device
+    _engine = ClipEngine()
 
 
 # ---------------------------------------------------------------------------

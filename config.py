@@ -13,6 +13,10 @@ MODEL_PROFILES = {
 ACTIVE_PROFILE = "fast"
 USE_ONNX = False  # enabled in Phase 2 after exporting the models to ONNX
 
+# "auto" picks CUDA when a GPU-enabled torch build detects one, else CPU.
+# Override with "cpu" or "cuda" to force a device.
+DEVICE = "auto"
+
 # ---------------------------------------------------------------------------
 # Prompt engineering: a list of descriptive sentences per category;
 # the text embeddings are averaged into one "text fingerprint" per category.

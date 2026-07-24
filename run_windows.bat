@@ -44,9 +44,9 @@ venv\Scripts\python.exe -m pip install --upgrade pip --quiet
 venv\Scripts\pip install --quiet pillow pillow-heif imagehash numpy opencv-python-headless
 if errorlevel 1 goto fail
 
-echo ==^> Installing PyTorch (CPU wheels - both packages MUST come from the
-echo     CPU index; PyPI torchvision is incompatible with CPU-index torch)...
-venv\Scripts\pip install --quiet torch torchvision --index-url https://download.pytorch.org/whl/cpu
+echo ==^> Installing PyTorch (CUDA-enabled wheels - work on both GPU and
+echo     CPU-only machines; the app lets you pick the device afterwards)...
+venv\Scripts\pip install --quiet torch torchvision --index-url https://download.pytorch.org/whl/cu121
 if errorlevel 1 goto fail
 
 echo ==^> Installing OpenCLIP...
@@ -58,7 +58,7 @@ venv\Scripts\pip install --quiet rapidocr onnxruntime python-bidi
 if errorlevel 1 goto fail
 
 echo ==^> Verifying installation...
-"%PY%" -c "import torch, torchvision, open_clip, cv2, PIL, imagehash, numpy, pillow_heif; from rapidocr import RapidOCR; print('  torch', torch.__version__, '- all imports OK')"
+"%PY%" -c "import torch, torchvision, open_clip, cv2, PIL, imagehash, numpy, pillow_heif; from rapidocr import RapidOCR; print('  torch', torch.__version__, '- device:', 'cuda' if torch.cuda.is_available() else 'cpu', '- all imports OK')"
 if errorlevel 1 goto fail
 
 echo.
